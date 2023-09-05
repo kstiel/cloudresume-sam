@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'cloudresume
+
+  Sample SAM Template for cloudresume
+
+  '
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+Resources:
+  MyDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: cloudresume
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: ID
+        AttributeType: S
+      KeySchema:
+      - AttributeName: ID
+        KeyType: HASH
+  MyRoute53ARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: kaungsithu.dev
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName:
+          Fn::GetAtt:
+          - MyDistribution
+          - DomainName
+        EvaluateTargetHealth: false
+  MyRoute53SubdomainARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: www.kaungsithu.dev
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName:
+          Fn::GetAtt:
+          - MyDistribution
+          - DomainName
+        EvaluateTargetHealth: false
+  MyRoute53SubdomainAAAARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: www.kaungsithu.dev
+      Type: AAAA
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName:
+          Fn::GetAtt:
+          - MyDistribution
+          - DomainName
+        EvaluateTargetHealth: false
+  MyRoute53AAAARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: kaungsithu.dev
+      Type: AAAA
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName:
+          Fn::GetAtt:
+          - MyDistribution
+          - DomainName
+        EvaluateTargetHealth: false
+  MyWebsite:
+    Type: AWS::S3::Bucket
+    Properties:
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      BucketName: kaungsithu-website
+  MyDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        ViewerCertificate:
+          AcmCertificateArn: arn:aws:acm:us-east-1:199220544527:certificate/3bd7132d-2546-415d-bb2c-0483079d3aea
+          MinimumProtocolVersion: TLSv1
+          SslSupportMethod: sni-only
+        Aliases:
+        - kaungsithu.dev
+        - www.kaungsithu.dev
+        DefaultCacheBehavior:
+          ViewerProtocolPolicy: redirect-to-https
+          TargetOriginId: kaungsithu-website.s3-website-us-west-1.amazonaws.com
+          DefaultTTL: 0
+          MinTTL: 0
+          MaxTTL: 0
+          ForwardedValues:
+            QueryString: false
+        Origins:
+        - DomainName: kaungsithu-website.s3-website-us-west-1.amazonaws.com
+          Id: kaungsithu-website.s3-website-us-west-1.amazonaws.com
+          CustomOriginConfig:
+            OriginProtocolPolicy: http-only
+        Enabled: 'true'
+        DefaultRootObject: index.html
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: MyWebsite
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: '*'
+          Action: s3:GetObject
+          Resource: arn:aws:s3:::kaungsithu-website/*
+  GetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: cloudresume
+      CodeUri: GetFunction
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+      - x86_64
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path: /get_count
+            Method: get
+    Metadata:
+      SamResourceId: GetFunction
+  PutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName: cloudresume
+      CodeUri: PutFunction
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+      - x86_64
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path: /put_count
+            Method: get
+    Metadata:
+      SamResourceId: PutFunction

@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  cloudresume
+
+  Sample SAM Template for cloudresume
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+
+Resources:
+
+  MyDynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: cloudresume
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: "ID"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "ID"
+          KeyType: "HASH"
+
+  MyRoute53ARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: kaungsithu.dev
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt MyDistribution.DomainName
+        EvaluateTargetHealth: false
+
+  MyRoute53SubdomainARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: www.kaungsithu.dev
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt MyDistribution.DomainName
+        EvaluateTargetHealth: false
+  
+  MyRoute53SubdomainAAAARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: www.kaungsithu.dev
+      Type: AAAA
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt MyDistribution.DomainName
+        EvaluateTargetHealth: false
+
+  MyRoute53AAAARecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: Z1040931265Z1U7EVHH0K
+      Name: kaungsithu.dev
+      Type: AAAA
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt MyDistribution.DomainName
+        EvaluateTargetHealth: false
+  
+  # MyCertificate:
+  #   Type: AWS::CertificateManager::Certificate
+  #   Properties:
+  #     DomainName: kaungsithu.dev
+  #     SubjectAlternativeNames:
+  #       - www.kaungsithu.dev
+  #     ValidationMethod: DNS
+
+  MyWebsite:
+    Type: AWS::S3::Bucket
+    Properties:
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      BucketName: kaungsithu-website
+
+  MyDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        ViewerCertificate:
+          AcmCertificateArn: arn:aws:acm:us-east-1:199220544527:certificate/3bd7132d-2546-415d-bb2c-0483079d3aea
+          MinimumProtocolVersion: TLSv1
+          SslSupportMethod: sni-only
+        Aliases:
+          - kaungsithu.dev
+          - www.kaungsithu.dev
+        DefaultCacheBehavior:
+          ViewerProtocolPolicy: redirect-to-https
+          TargetOriginId: kaungsithu-website.s3-website-us-west-1.amazonaws.com
+          DefaultTTL: 0
+          MinTTL: 0
+          MaxTTL: 0
+          ForwardedValues:
+            QueryString: false
+        Origins:
+          - DomainName: kaungsithu-website.s3-website-us-west-1.amazonaws.com
+            Id: kaungsithu-website.s3-website-us-west-1.amazonaws.com
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+        Enabled: "true"
+        DefaultRootObject: index.html
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyWebsite
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: "s3:GetObject"
+            Resource: "arn:aws:s3:::kaungsithu-website/*"
+
+
+  GetFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: cloudresume
+      CodeUri: get_count/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /get_count
+            Method: get
+
+  PutFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: cloudresume
+      CodeUri: put_count/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /put_count
+            Method: get
+
+# Outputs:
+#   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+#   # Find out more about other implicit resources you can reference within SAM
+#   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+#   HelloWorldApi:
+#     Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+#     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
+#   HelloWorldFunction:
+#     Description: "Hello World Lambda Function ARN"
+#     Value: !GetAtt HelloWorldFunction.Arn
+#   HelloWorldFunctionIamRole:
+#     Description: "Implicit IAM Role created for Hello World function"
+#     Value: !GetAtt HelloWorldFunctionRole.Arn
