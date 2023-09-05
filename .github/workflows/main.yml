@@ -1,6 +1,7 @@
 name: test-build-deploy
-
 on: [push]
+env:
+  PYTHON_VERSION: 3.9
 
 jobs:
   test-infra:
@@ -14,7 +15,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.9  # You can specify your desired Python version
+        python-version: ${{ env.PYTHON_VERSION }}  # You can specify your desired Python version
 
     # - name: Install dependencies
     #   run: pip install -r requirements.txt
@@ -27,7 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}  # You can specify your desired Python version
       - uses: aws-actions/setup-sam@v1
       - uses: aws-actions/configure-aws-credentials@v1
         with:
